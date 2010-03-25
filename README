@@ -3,9 +3,13 @@ rhythmbox-vkontakte is a plugin for searching and listening to vkontakte (vk.com
 rhythmbox-youtube (http://gitorious.org/rhythmbox-youtube/rhythmbox-youtube)
 has been used as example by developing.
 
+INSTALLATION:
+- copy directory as "vkontakte" to ~/.gnome2/rhythmbox/plugins/ (create if missing)
+- activate "Vkontakte-Music" plugin
+
 ===========
 
-Copyright © 2010 Alexey Grunichev <grunichev@gmail.com>
+Copyright © 2010 Alexey Grunichev 
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
