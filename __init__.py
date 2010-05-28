@@ -20,6 +20,14 @@ import rb, rhythmdb
 import gobject, gtk
 from VkontakteSource import VkontakteSource
 
+popup_ui = """
+<ui>
+	<popup name="VkontakteSourceViewPopup">
+		<menuitem name="AddToQueueLibraryPopup" action="AddToQueue"/>
+	</popup>
+</ui>
+"""
+
 class VkontaktePlugin(rb.Plugin):
 		
 	def activate(self, shell):
@@ -33,6 +41,10 @@ class VkontaktePlugin(rb.Plugin):
 		
 		shell.append_source(self.source, None)
 		shell.register_entry_type_for_source(self.source, entry_type)
+		
+		ui = shell.get_ui_manager()
+		self.uid = ui.add_ui_from_string(popup_ui)
+		ui.ensure_update()
 
 	def deactivate(self, shell):
 		self.source.delete_thyself()

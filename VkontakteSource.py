@@ -94,6 +94,9 @@ class VkontakteSource(rb.Source):
 		
 		self.searches = {} # Dictionary of searches, with the search term as keys
 		self.current_search = "" # The search term of the search results currently being shown
+
+		ev = self.get_entry_view()
+		ev.connect_object("show_popup", self.show_popup_cb, self, 0)
 		
 		self.initialised = True
 		
@@ -129,13 +132,16 @@ class VkontakteSource(rb.Source):
 	def on_search_button_clicked(self, button, entry):
 		# Only do anything if there is text in the search entry
 		if entry.get_active_text():
-			# If this term has never been searched before then create a new search object, add it to the dictionary, and start the search. 
-			if not entry.get_active_text() in self.searches:
-				self.searches[entry.get_active_text()] = VkontakteSearch(entry.get_active_text(), self.props.shell.props.db, self.props.entry_type)
-				# Start the search asynchronously
-				glib.idle_add(self.searches[entry.get_active_text()].start, priority=glib.PRIORITY_HIGH_IDLE)
+			entry_exists = False
+			if entry.get_active_text() in self.searches:
+				entry_exists = True
+			# sometimes links become obsolete, so, research enabled
+			self.searches[entry.get_active_text()] = VkontakteSearch(entry.get_active_text(), self.props.shell.props.db, self.props.entry_type)
+			# Start the search asynchronously
+			glib.idle_add(self.searches[entry.get_active_text()].start, priority=glib.PRIORITY_HIGH_IDLE)
+			# do not create new item in dropdown list if already exists
+			if not entry_exists:
 				entry.prepend_text(entry.get_active_text())
-			
 			# Update the entry view and source so the display the query model relevant to the current search
 			self.current_search = entry.get_active_text()
 			self.props.query_model = self.searches[self.current_search].query_model
@@ -147,4 +153,8 @@ class VkontakteSource(rb.Source):
 			self.props.query_model = self.searches[self.current_search].query_model
 			self.entry_view.set_model(self.props.query_model)
 			
+	def show_popup_cb(self, source, some_int, some_bool):
+		self.show_source_popup("/VkontakteSourceViewPopup")
+
+
 gobject.type_register(VkontakteSource)
