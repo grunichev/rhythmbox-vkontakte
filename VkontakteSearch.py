@@ -51,8 +51,8 @@ class VkontakteSearch:
 				self.db.set(entry, rhythmdb.PROP_TITLE, result.title)
 			if result.duration:
 				self.db.set(entry, rhythmdb.PROP_DURATION, result.duration)
-			if result.description:
-				self.db.set(entry, rhythmdb.PROP_GENRE, result.description)
+			if result.artist:
+				self.db.set(entry, rhythmdb.PROP_ARTIST, result.artist)
 		self.query_model.add_entry(entry, -1)
 		self.ready_result_count += 1
 

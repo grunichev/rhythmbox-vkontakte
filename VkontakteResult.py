@@ -20,5 +20,5 @@ class VkontakteResult:
 		# Store the function. This will be called when we are ready to be added to the db.
 		self.title = entry.getElementsByTagName('title')[0].firstChild.nodeValue
 		self.duration = int(entry.getElementsByTagName('duration')[0].firstChild.nodeValue)
-		self.description = entry.getElementsByTagName('artist')[0].firstChild.nodeValue
+		self.artist = entry.getElementsByTagName('artist')[0].firstChild.nodeValue
 		self.url = entry.getElementsByTagName('url')[0].firstChild.nodeValue
