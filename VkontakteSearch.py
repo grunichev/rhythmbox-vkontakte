@@ -20,6 +20,7 @@ from xml.dom import minidom
 from VkontakteResult import VkontakteResult
 import urllib2
 import hashlib
+from html_decode import decode_htmlentities
 
 APP_ID = 1850196
 SECRET_KEY = 'nk0n6I6vjQ'
@@ -48,11 +49,11 @@ class VkontakteSearch:
 		if entry == None:
 			entry = self.db.entry_new(self.entry_type, result.url)
 			if result.title:
-				self.db.set(entry, rhythmdb.PROP_TITLE, result.title)
+				self.db.set(entry, rhythmdb.PROP_TITLE, decode_htmlentities(result.title))
 			if result.duration:
 				self.db.set(entry, rhythmdb.PROP_DURATION, result.duration)
 			if result.artist:
-				self.db.set(entry, rhythmdb.PROP_ARTIST, result.artist)
+				self.db.set(entry, rhythmdb.PROP_ARTIST, decode_htmlentities(result.artist))
 		self.query_model.add_entry(entry, -1)
 		self.ready_result_count += 1
 

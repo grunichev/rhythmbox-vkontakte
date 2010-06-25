@@ -24,14 +24,16 @@ def cell_text_data_func(column, cell, model, iterr, db):
 	entry = model.get_value(iterr, 0)
 	markup = ""
 	if db.entry_get(entry, rhythmdb.PROP_TITLE):
-		markup += "<b>{0}</b>".format(db.entry_get(entry, rhythmdb.PROP_TITLE).replace('<', '&lt;').replace('>', '&gt;'))
+		markup += "<b>{0}</b>".format(glib.markup_escape_text(db.entry_get(entry, rhythmdb.PROP_TITLE)))
 	if db.entry_get(entry, rhythmdb.PROP_DURATION):
 		seconds = db.entry_get(entry, rhythmdb.PROP_DURATION)
 		minutes = seconds / 60
 		seconds = seconds % 60
 		markup += " - {0}:{1}\n".format(minutes, format(seconds, "02"))
+	else:
+		markup += " - unknown\n"
 	if db.entry_get(entry, rhythmdb.PROP_ARTIST):
-		markup += db.entry_get(entry, rhythmdb.PROP_ARTIST).replace('<', '&lt;').replace('>', '&gt;')
+		markup += glib.markup_escape_text(db.entry_get(entry, rhythmdb.PROP_ARTIST))
 	cell.props.markup = markup
 	cell.props.wrap_width = column.get_width()
 	cell.props.wrap_mode = pango.WRAP_WORD
