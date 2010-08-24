@@ -100,6 +100,24 @@ class VkontakteSource(rb.Source):
 		ev = self.get_entry_view()
 		ev.connect_object("show_popup", self.show_popup_cb, self, 0)
 		
+		action = gtk.Action ('DownloadFile', _('Download File'), _('Save the file to the disk'), "")
+		action.connect ('activate', self.download_file, shell)
+		action_group = gtk.ActionGroup ('VkontakteSourceViewPopup')
+		action_group.add_action (action)
+		shell.get_ui_manager().insert_action_group (action_group)
+		
+		popup_ui = """
+<ui>
+  <popup name="VkontakteSourceViewPopup">
+    <menuitem name="DownloadFile" action="DownloadFile"/>
+    <separator/>
+  </popup>
+</ui>
+"""
+
+		self.ui_id = shell.get_ui_manager().add_ui_from_string(popup_ui)
+		shell.get_ui_manager().ensure_update()
+		
 		self.initialised = True
 		
 	def do_impl_get_entry_view(self):
@@ -156,7 +174,12 @@ class VkontakteSource(rb.Source):
 			self.entry_view.set_model(self.props.query_model)
 			
 	def show_popup_cb(self, source, some_int, some_bool):
+		print "called show_popup_cb with params: source=%s some_int=%s some_bool=%s" % (source, some_int, some_bool)
 		self.show_source_popup("/VkontakteSourceViewPopup")
 
+	def download_file(self, action, shell):
+		download_url = shell.get_player().get_active_source().get_entry_view().get_selected_entries()[0].get_playback_uri();
+		gtk.show_uri(self.props.shell.props.window.get_screen(), download_url, gtk.gdk.CURRENT_TIME)
+		
 
 gobject.type_register(VkontakteSource)
