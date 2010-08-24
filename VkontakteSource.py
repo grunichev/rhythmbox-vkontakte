@@ -174,7 +174,6 @@ class VkontakteSource(rb.Source):
 			self.entry_view.set_model(self.props.query_model)
 			
 	def show_popup_cb(self, source, some_int, some_bool):
-		print "called show_popup_cb with params: source=%s some_int=%s some_bool=%s" % (source, some_int, some_bool)
 		self.show_source_popup("/VkontakteSourceViewPopup")
 
 	def download_file(self, action, shell):
