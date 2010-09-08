@@ -44,7 +44,6 @@ class VkontakteSearch:
 		return self.ready_result_count == self.result_count
 	
 	def add_entry(self, result):
-		# Create the db entry and add it to the query model for this search
 		entry = self.db.entry_lookup_by_location(result.url)
 		if entry == None:
 			entry = self.db.entry_new(self.entry_type, result.url)

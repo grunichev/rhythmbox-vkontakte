@@ -28,10 +28,19 @@ popup_ui = """
 </ui>
 """
 
+class VkontakteEntryType(rhythmdb.EntryType):
+	def __init__(self):
+		rhythmdb.EntryType.__init__(self, name='vkontakte')
+
+	def can_sync_metadata(self, entry):
+		return True
+
 class VkontaktePlugin(rb.Plugin):
 		
 	def activate(self, shell):
-		entry_type = shell.props.db.entry_register_type("VkontakteEntryType")
+		entry_type = VkontakteEntryType()
+		shell.props.db.register_entry_type(entry_type)
+		#entry_type = shell.props.db.entry_register_type("VkontakteEntryType")
 		source_group = rb.rb_source_group_get_by_name("library")
 		self.source = gobject.new(VkontakteSource, name=_("Vkontakte"), shell=shell, plugin=self, entry_type=entry_type, source_group=source_group)
 		# Set the source's icon

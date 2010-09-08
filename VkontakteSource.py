@@ -19,24 +19,6 @@ import rb, rhythmdb
 import gobject, gtk, glib, pango
 from VkontakteSearch import VkontakteSearch
 import rhythmdb
-
-def cell_text_data_func(column, cell, model, iterr, db):
-	entry = model.get_value(iterr, 0)
-	markup = ""
-	if db.entry_get(entry, rhythmdb.PROP_TITLE):
-		markup += "<b>{0}</b>".format(glib.markup_escape_text(db.entry_get(entry, rhythmdb.PROP_TITLE)))
-	if db.entry_get(entry, rhythmdb.PROP_DURATION):
-		seconds = db.entry_get(entry, rhythmdb.PROP_DURATION)
-		minutes = seconds / 60
-		seconds = seconds % 60
-		markup += " - {0}:{1}\n".format(minutes, format(seconds, "02"))
-	else:
-		markup += " - unknown\n"
-	if db.entry_get(entry, rhythmdb.PROP_ARTIST):
-		markup += glib.markup_escape_text(db.entry_get(entry, rhythmdb.PROP_ARTIST))
-	cell.props.markup = markup
-	cell.props.wrap_width = column.get_width()
-	cell.props.wrap_mode = pango.WRAP_WORD
 	
 class VkontakteSource(rb.Source):
 	def __init__(self):
@@ -50,27 +32,14 @@ class VkontakteSource(rb.Source):
 		
 		query_model = rhythmdb.QueryModel()
 		self.props.query_model = query_model
-		self.treeview = None
+		
+		self.entry_view.append_column(rb.ENTRY_VIEW_COL_TITLE, True)
+		self.entry_view.append_column(rb.ENTRY_VIEW_COL_ARTIST, False)
+		self.entry_view.append_column(rb.ENTRY_VIEW_COL_DURATION, False)
+		self.entry_view.set_sorting_order("Title", gtk.SORT_ASCENDING)
 		self.entry_view.set_model(query_model)
 		self.entry_view.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		self.entry_view.set_shadow_type(gtk.SHADOW_IN)
-		
-		column = gtk.TreeViewColumn()
-		text_renderer = gtk.CellRendererText()
-		column.pack_start(text_renderer)
-		column.set_clickable(False);
-		column.set_resizable(False);
-		column.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED);
-		column.set_expand(True)
-		column.set_cell_data_func(text_renderer, cell_text_data_func, shell.props.db)
-		
-		self.entry_view.append_column_custom(column, "", "")
-		self.entry_view.set_columns_clickable(False)
-		
-		# We need access to the gtk.TreeView used by the rb.Entry View, to turn its fixed height mode off.
-		# rb.EntryView doesn't expose its internal treeview. However, we can get access through the newly added column.
-		# This is wrong and shouldn't be how we do it, but it works.
-		column.get_tree_view().props.fixed_height_mode = False
 		
 		# Set up the search bar and button UI. This could probably be done in a better way.
 		search_entry = gtk.combo_box_entry_new_text()
@@ -100,8 +69,8 @@ class VkontakteSource(rb.Source):
 		ev = self.get_entry_view()
 		ev.connect_object("show_popup", self.show_popup_cb, self, 0)
 		
-		action = gtk.Action ('DownloadFile', _('Download File'), _('Save the file to the disk'), "")
-		action.connect ('activate', self.download_file, shell)
+		action = gtk.Action ('CopyURL', 'Copy URL', 'Copy URL to Clipboard', "")
+		action.connect ('activate', self.copy_url, shell)
 		action_group = gtk.ActionGroup ('VkontakteSourceViewPopup')
 		action_group.add_action (action)
 		shell.get_ui_manager().insert_action_group (action_group)
@@ -109,7 +78,7 @@ class VkontakteSource(rb.Source):
 		popup_ui = """
 <ui>
   <popup name="VkontakteSourceViewPopup">
-    <menuitem name="DownloadFile" action="DownloadFile"/>
+    <menuitem name="CopyURL" action="CopyURL"/>
     <separator/>
   </popup>
 </ui>
@@ -174,11 +143,14 @@ class VkontakteSource(rb.Source):
 			self.entry_view.set_model(self.props.query_model)
 			
 	def show_popup_cb(self, source, some_int, some_bool):
+		print "called show_popup_cb with params: source=%s some_int=%s some_bool=%s" % (source, some_int, some_bool)
 		self.show_source_popup("/VkontakteSourceViewPopup")
 
-	def download_file(self, action, shell):
-		download_url = shell.get_player().get_active_source().get_entry_view().get_selected_entries()[0].get_playback_uri();
-		gtk.show_uri(self.props.shell.props.window.get_screen(), download_url, gtk.gdk.CURRENT_TIME)
+	def copy_url(self, action, shell):
+		download_url = shell.get_property("selected-source").get_entry_view().get_selected_entries()[0].get_playback_uri();
+		clipboard = gtk.clipboard_get()
+		clipboard.set_text(download_url)
+		clipboard.store()
 		
 
 gobject.type_register(VkontakteSource)
