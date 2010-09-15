@@ -38,9 +38,12 @@ class VkontakteEntryType(rhythmdb.EntryType):
 class VkontaktePlugin(rb.Plugin):
 		
 	def activate(self, shell):
-		entry_type = VkontakteEntryType()
-		shell.props.db.register_entry_type(entry_type)
-		#entry_type = shell.props.db.entry_register_type("VkontakteEntryType")
+		try:
+			entry_type = VkontakteEntryType()
+			shell.props.db.register_entry_type(entry_type)
+		except NotImplementedError:
+			# backward compatibility with 0.12 version
+			entry_type = shell.props.db.entry_register_type("VkontakteEntryType")
 		source_group = rb.rb_source_group_get_by_name("library")
 		self.source = gobject.new(VkontakteSource, name=_("Vkontakte"), shell=shell, plugin=self, entry_type=entry_type, source_group=source_group)
 		# Set the source's icon
