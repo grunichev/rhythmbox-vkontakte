@@ -121,9 +121,7 @@ class VkontakteSource(rb.Source):
 	def on_search_button_clicked(self, button, entry):
 		# Only do anything if there is text in the search entry
 		if entry.get_active_text():
-			entry_exists = False
-			if entry.get_active_text() in self.searches:
-				entry_exists = True
+			entry_exists = entry.get_active_text() in self.searches
 			# sometimes links become obsolete, so, research enabled
 			self.searches[entry.get_active_text()] = VkontakteSearch(entry.get_active_text(), self.props.shell.props.db, self.props.entry_type)
 			# Start the search asynchronously

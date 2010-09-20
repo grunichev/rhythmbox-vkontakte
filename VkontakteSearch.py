@@ -20,6 +20,7 @@ from xml.dom import minidom
 from VkontakteResult import VkontakteResult
 import urllib2
 import hashlib
+import rb
 from html_decode import decode_htmlentities
 
 APP_ID = 1850196
@@ -32,16 +33,14 @@ class VkontakteSearch:
 		self.db = db
 		self.entry_type = entry_type
 		self.query_model = rhythmdb.QueryModel()
-		self.result_count = 0
-		self.ready_result_count = 0
+		self.search_complete = False
 	
 	def make_sig(self, method, query):
 		str = "%sapi_id=%scount=200method=%sq=%stest_mode=1v=2.0%s" % (USER_ID, APP_ID, method, query, SECRET_KEY)
 		return hashlib.md5(str).hexdigest()
 		
-	# Returns true if the search is complete, false if it isn't
 	def is_complete(self):
-		return self.ready_result_count == self.result_count
+		return self.search_complete
 	
 	def add_entry(self, result):
 		entry = self.db.entry_lookup_by_location(result.url)
@@ -54,15 +53,18 @@ class VkontakteSearch:
 			if result.artist:
 				self.db.set(entry, rhythmdb.PROP_ARTIST, decode_htmlentities(result.artist))
 		self.query_model.add_entry(entry, -1)
-		self.ready_result_count += 1
+
+	def on_search_results_recieved(self, data):
+		xmldoc = minidom.parseString(data)
+		audios = xmldoc.getElementsByTagName("audio")
+		for audio in audios:
+			self.add_entry(VkontakteResult(audio))
+		self.search_complete = True
 
 	# Starts searching
 	def start(self):
 		sig = self.make_sig('audio.search', self.search_term)
 		path = "http://api.vk.com/api.php?api_id=%s&count=200&v=2.0&method=audio.search&sig=%s&test_mode=1&q=%s" % (APP_ID, sig, urllib2.quote(self.search_term))
-		xmldoc = minidom.parse(urllib2.urlopen(path))
-		audios = xmldoc.getElementsByTagName("audio")
-		for audio in audios:
-			self.result_count += 1 
-			self.add_entry(VkontakteResult(audio))
+		loader = rb.Loader()
+		loader.get_url(path, self.on_search_results_recieved)
 
