@@ -34,9 +34,10 @@ class VkontakteSearch:
 		self.entry_type = entry_type
 		self.query_model = rhythmdb.QueryModel()
 		self.search_complete = False
+		self.entries_hashes = []
 	
 	def make_sig(self, method, query):
-		str = "%sapi_id=%scount=200method=%sq=%stest_mode=1v=2.0%s" % (USER_ID, APP_ID, method, query, SECRET_KEY)
+		str = "%sapi_id=%scount=300method=%sq=%stest_mode=1v=2.0%s" % (USER_ID, APP_ID, method, query, SECRET_KEY)
 		return hashlib.md5(str).hexdigest()
 		
 	def is_complete(self):
@@ -45,6 +46,11 @@ class VkontakteSearch:
 	def add_entry(self, result):
 		entry = self.db.entry_lookup_by_location(result.url)
 		if entry == None:
+			# add only distinct songs (unique by title+artist+duration) to prevent duplicates
+			hash = ('%s%s%s' % (result.title, result.artist, result.duration)).lower()
+			if hash in self.entries_hashes:
+				return
+			self.entries_hashes.append(hash)
 			entry = self.db.entry_new(self.entry_type, result.url)
 			if result.title:
 				self.db.set(entry, rhythmdb.PROP_TITLE, decode_htmlentities(result.title))
@@ -64,7 +70,7 @@ class VkontakteSearch:
 	# Starts searching
 	def start(self):
 		sig = self.make_sig('audio.search', self.search_term)
-		path = "http://api.vk.com/api.php?api_id=%s&count=200&v=2.0&method=audio.search&sig=%s&test_mode=1&q=%s" % (APP_ID, sig, urllib2.quote(self.search_term))
+		path = "http://api.vk.com/api.php?api_id=%s&count=300&v=2.0&method=audio.search&sig=%s&test_mode=1&q=%s" % (APP_ID, sig, urllib2.quote(self.search_term))
 		loader = rb.Loader()
 		loader.get_url(path, self.on_search_results_recieved)
 
