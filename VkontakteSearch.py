@@ -45,12 +45,12 @@ class VkontakteSearch:
 	
 	def add_entry(self, result):
 		entry = self.db.entry_lookup_by_location(result.url)
-		if entry == None:
-			# add only distinct songs (unique by title+artist+duration) to prevent duplicates
-			hash = ('%s%s%s' % (result.title, result.artist, result.duration)).lower()
-			if hash in self.entries_hashes:
-				return
-			self.entries_hashes.append(hash)
+		# add only distinct songs (unique by title+artist+duration) to prevent duplicates
+		hash = ('%s%s%s' % (result.title, result.artist, result.duration)).lower()
+		if hash in self.entries_hashes:
+			return
+		self.entries_hashes.append(hash)
+		if entry is None:
 			entry = self.db.entry_new(self.entry_type, result.url)
 			if result.title:
 				self.db.set(entry, rhythmdb.PROP_TITLE, decode_htmlentities(result.title))
