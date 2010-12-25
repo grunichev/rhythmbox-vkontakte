@@ -19,6 +19,8 @@
 import rb, rhythmdb
 import gobject, gtk
 from VkontakteSource import VkontakteSource
+from VkontakteConfigDialog import VkontakteConfigDialog
+from VkontakteConfig import VkontakteConfig
 
 popup_ui = """
 <ui>
@@ -36,6 +38,10 @@ class VkontakteEntryType(rhythmdb.EntryType):
 		return True
 
 class VkontaktePlugin(rb.Plugin):
+	def __init__(self):
+		self.config = VkontakteConfig()
+
+		rb.Plugin.__init__(self)
 		
 	def activate(self, shell):
 		try:
@@ -61,3 +67,10 @@ class VkontaktePlugin(rb.Plugin):
 	def deactivate(self, shell):
 		self.source.delete_thyself()
 		del self.source
+	
+	def create_configure_dialog(self, dialog=None):
+		if not dialog:
+			builder_file = self.find_file("vkontakte-prefs.ui")
+			dialog = VkontakteConfigDialog (builder_file, self.config).get_dialog()
+		dialog.present()
+		return dialog

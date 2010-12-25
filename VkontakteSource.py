@@ -16,14 +16,22 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import rb, rhythmdb
-import gobject, gtk, glib
+import gobject, gtk, glib, os
+import shutil, tempfile
 from VkontakteSearch import VkontakteSearch
+from VkontakteConfig import VkontakteConfig
 import rhythmdb
 	
 class VkontakteSource(rb.Source):
 	def __init__(self):
 		rb.Source.__init__(self)
+		self.config = VkontakteConfig()
 		self.initialised = False
+		self.downloading = False
+		self.download_queue = []
+		self.__load_current_size = 0
+		self.__load_total_size = 0
+		self.error_msg = ''
 	
 	def initialise(self):
 		shell = self.props.shell
@@ -71,14 +79,18 @@ class VkontakteSource(rb.Source):
 		
 		action = gtk.Action ('CopyURL', 'Copy URL', 'Copy URL to Clipboard', "")
 		action.connect ('activate', self.copy_url, shell)
+		action2 = gtk.Action ('Download', 'Download', 'Download', "")
+		action2.connect ('activate', self.download, shell)
 		action_group = gtk.ActionGroup ('VkontakteSourceViewPopup')
 		action_group.add_action (action)
+		action_group.add_action (action2)
 		shell.get_ui_manager().insert_action_group (action_group)
 		
 		popup_ui = """
 <ui>
   <popup name="VkontakteSourceViewPopup">
     <menuitem name="CopyURL" action="CopyURL"/>
+    <menuitem name="Download" action="Download"/>
     <separator/>
   </popup>
 </ui>
@@ -98,6 +110,21 @@ class VkontakteSource(rb.Source):
 		self.search_button.grab_default()
 			
 	def do_impl_get_status(self):
+		if self.error_msg:
+			error_msg = self.error_msg
+			self.error_msg = ''
+			return (error_msg, "", 1)
+		if self.downloading:
+			if self.__load_total_size > 0:
+				# Got data
+				progress = min (float(self.__load_current_size) / self.__load_total_size, 1.0)
+			else:
+				# Download started, no data yet received
+				progress = -1.0
+			str = "Downloading %s" % self.filename[:70]
+			if self.download_queue:
+				str += " (%s files more in queue)" % len(self.download_queue)
+			return (str, "", progress)
 		if self.current_search:
 			if self.searches[self.current_search].is_complete():
 				return (self.props.query_model.compute_status_normal("Found %d result", "Found %d results"), "", 1)
@@ -122,7 +149,7 @@ class VkontakteSource(rb.Source):
 		# Only do anything if there is text in the search entry
 		if entry.get_active_text():
 			entry_exists = entry.get_active_text() in self.searches
-			# sometimes links become obsolete, so, research enabled
+			# sometimes links become obsolete, so, re-search enabled
 			self.searches[entry.get_active_text()] = VkontakteSearch(entry.get_active_text(), self.props.shell.props.db, self.props.entry_type)
 			# Start the search asynchronously
 			glib.idle_add(self.searches[entry.get_active_text()].start, priority=glib.PRIORITY_HIGH_IDLE)
@@ -141,7 +168,6 @@ class VkontakteSource(rb.Source):
 			self.entry_view.set_model(self.props.query_model)
 			
 	def show_popup_cb(self, source, some_int, some_bool):
-		print "called show_popup_cb with params: source=%s some_int=%s some_bool=%s" % (source, some_int, some_bool)
 		self.show_source_popup("/VkontakteSourceViewPopup")
 
 	def copy_url(self, action, shell):
@@ -149,6 +175,74 @@ class VkontakteSource(rb.Source):
 		clipboard = gtk.clipboard_get()
 		clipboard.set_text(download_url)
 		clipboard.store()
+
+	def download(self, action, shell):
+		for entry in shell.get_property("selected-source").get_entry_view().get_selected_entries():
+			self.download_queue.append(entry)
+		if not self.downloading:
+			entry = self.download_queue.pop(0)
+			self._start_download(entry)
+
+	def _start_download(self, entry):
+		shell = self.props.shell
+		self.download_url = entry.get_playback_uri()
+
+		filemask = self.config.get('filemask')
+		artist = shell.props.db.entry_get(entry, rhythmdb.PROP_ARTIST)[:50].replace('/', '')
+		title = shell.props.db.entry_get(entry, rhythmdb.PROP_TITLE)[:50].replace('/', '')
+		filemask = filemask.replace('%A', artist)
+		filemask = filemask.replace('%T', title)
+
+		self.filename = u"%s - %s" % (shell.props.db.entry_get(entry, rhythmdb.PROP_ARTIST), shell.props.db.entry_get(entry, rhythmdb.PROP_TITLE))
+		self.save_location = os.path.expanduser(filemask)
+		dir, file = os.path.split(self.save_location)
+		if not os.path.exists(dir):
+			try:
+				os.makedirs(dir)
+			except:
+				self.error_msg = "Can't create or access directory. Check settings (Edit => Plugins => Configure)"
+				self.notify_status_changed()
+				return
+
+		# Download file to the temporary folder
+		self.output_file = tempfile.NamedTemporaryFile(delete=False)
+		self.downloading = True
+		self.notify_status_changed()
+
+		self.downloader = rb.ChunkLoader()
+		self.downloader.get_url_chunks(self.download_url, 64*1024, True, self.download_callback, self.output_file)
+
+
+	def download_callback (self, result, total, out):
+		if not result:
+			# Download finished
+			out.file.close()
+			self.__load_current_size = 0
+			self.downloading = False
+			# Move temporary file to the save location
+			try:
+				shutil.move(out.name, self.save_location)
+			except:
+				self.error_msg = "Can't write to directory. Check settings (Edit => Plugins => Configure)"
+				self.notify_status_changed()
+				return
+			if self.download_queue:
+				entry = self.download_queue.pop(0)
+				return self._start_download(entry)
+			else:
+				self.downloading = False
+		elif isinstance(result, Exception):
+			# Exception occured - should be handled correctly
+			print 'Error during downloading process happened'
+			pass
+
+		if self.downloading:
+			# Write to the file, update downloaded size
+			out.file.write(result)
+			self.__load_current_size += len(result)
+			self.__load_total_size = total
+
+		self.notify_status_changed()
 		
 
 gobject.type_register(VkontakteSource)
