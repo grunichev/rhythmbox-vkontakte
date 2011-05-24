@@ -104,12 +104,20 @@ class VkontakteSource(rb.Source):
 	def do_impl_get_entry_view(self):
 		return self.entry_view
 	
+	# rhyhtmbox api break up (0.13.2 - 0.13.3)
 	def do_impl_activate(self):
+		self.do_selected()
+
+	def do_selected(self):
 		if not self.initialised:
 			self.initialise()
 		self.search_button.grab_default()
-			
+
+	# rhyhtmbox api break up (0.13.2 - 0.13.3)
 	def do_impl_get_status(self):
+		return self.do_get_status()
+
+	def do_get_status(self):
 		if self.error_msg:
 			error_msg = self.error_msg
 			self.error_msg = ''
@@ -168,16 +176,30 @@ class VkontakteSource(rb.Source):
 			self.entry_view.set_model(self.props.query_model)
 			
 	def show_popup_cb(self, source, some_int, some_bool):
-		self.show_source_popup("/VkontakteSourceViewPopup")
+		# rhythmbox api break up (0.13.2 - 0.13.3)
+		if hasattr(self, 'show_source_popup'):
+			self.show_source_popup("/VkontakteSourceViewPopup")
+		else:
+			self.show_page_popup("/VkontakteSourceViewPopup")
 
 	def copy_url(self, action, shell):
-		download_url = shell.get_property("selected-source").get_entry_view().get_selected_entries()[0].get_playback_uri();
+		# rhythmbox api break up (0.13.2 - 0.13.3)
+		try:
+			selected_source = shell.get_property("selected-source")
+		except:
+			selected_source = shell.get_property("selected-page")
+		download_url = selected_source.get_entry_view().get_selected_entries()[0].get_playback_uri();
 		clipboard = gtk.clipboard_get()
 		clipboard.set_text(download_url)
 		clipboard.store()
 
 	def download(self, action, shell):
-		for entry in shell.get_property("selected-source").get_entry_view().get_selected_entries():
+		# rhythmbox api break up (0.13.2 - 0.13.3)
+		try:
+			selected_source = shell.get_property("selected-source")
+		except:
+			selected_source = shell.get_property("selected-page")
+		for entry in selected_source.get_entry_view().get_selected_entries():
 			self.download_queue.append(entry)
 		if not self.downloading:
 			entry = self.download_queue.pop(0)
@@ -210,7 +232,7 @@ class VkontakteSource(rb.Source):
 		self.notify_status_changed()
 
 		self.downloader = rb.ChunkLoader()
-		self.downloader.get_url_chunks(self.download_url, 64*1024, True, self.download_callback, self.output_file)
+		self.downloader.get_url_chunks(self.download_url, 64 * 1024, True, self.download_callback, self.output_file)
 
 
 	def download_callback (self, result, total, out):

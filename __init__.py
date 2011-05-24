@@ -50,20 +50,27 @@ class VkontaktePlugin(rb.Plugin):
 		except NotImplementedError:
 			# backward compatibility with 0.12 version
 			entry_type = shell.props.db.entry_register_type("VkontakteEntryType")
-		source_group = rb.rb_source_group_get_by_name("library")
-		self.source = gobject.new(VkontakteSource, name=_("Vkontakte"), shell=shell, plugin=self, entry_type=entry_type, source_group=source_group)
 		# Set the source's icon
 		width, height = gtk.icon_size_lookup(gtk.ICON_SIZE_LARGE_TOOLBAR)
 		icon = gtk.gdk.pixbuf_new_from_file_at_size(self.find_file("icon.ico"), width, height)
-		self.source.props.icon = icon
-		
-		shell.append_source(self.source, None)
-		shell.register_entry_type_for_source(self.source, entry_type)
-		
+		# rhythmbox api break up (0.13.2 - 0.13.3)
+		if hasattr(rb, 'rb_source_group_get_by_name'):
+			source_group = rb.rb_source_group_get_by_name("library")
+			self.source = gobject.new(VkontakteSource, name=_("Vkontakte"), shell=shell, icon=icon, plugin=self, entry_type=entry_type, source_group=source_group)
+			shell.register_entry_type_for_source(self.source, entry_type)
+			shell.append_source(self.source, None)
+		else:
+			source_group = rb.rb_display_page_group_get_by_id ("library")
+			self.source = gobject.new(VkontakteSource, name=_("Vkontakte"), shell=shell, plugin=self, pixbuf=icon, entry_type=entry_type)
+			shell.register_entry_type_for_source(self.source, entry_type)
+			shell.append_display_page(self.source, source_group)
+
 		ui = shell.get_ui_manager()
 		self.uid = ui.add_ui_from_string(popup_ui)
 		ui.ensure_update()
 
+		self.source.initialise()
+	
 	def deactivate(self, shell):
 		self.source.delete_thyself()
 		del self.source
