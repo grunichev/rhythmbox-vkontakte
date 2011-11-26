@@ -61,6 +61,8 @@ class VkontakteSearch:
 		self.query_model.add_entry(entry, -1)
 
 	def on_search_results_recieved(self, data):
+		# vkontakte sometimes returns invalid XML with empty first line
+		data = data.lstrip()
 		# remove invalid symbol that occured in titles/artist
 		data = data.replace(u'\uffff', '')
 		xmldoc = minidom.parseString(data)
